@@ -1,43 +1,56 @@
 import base64
-import io
 import os
-import google.generativeai as genai
-# from gtts import gTTS # Disable fallback to force Gemini
+import httpx
+import json
+from dotenv import load_dotenv
 
-# Configure API
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+load_dotenv()
 
 async def generate_speech(text: str) -> str:
     """
-    Generates speech from text using the gemini-2.5-flash-preview-tts model.
-    Returns base64 encoded audio.
+    Generates speech from text using the gemini-2.5-flash-preview-tts model via REST API.
+    Returns base64 encoded audio string.
     """
-    try:
-        # Initialize the specific TTS model
-        model = genai.GenerativeModel('models/gemini-2.5-flash-preview-tts')
-        
-        # Determine strictness of the response type.
-        # Often TTS models take text and return a blob.
-        # We request the response.
-        
-        response = model.generate_content(text)
-        
-        # Capture audio data from the response parts
-        # For non-text responses, we look at the parts
-        mp3_data = None
-        
-        if response.parts:
-            for part in response.parts:
-                # Check for inline_data (blob)
-                if hasattr(part, 'inline_data') and part.inline_data:
-                    mp3_data = part.inline_data.data
-                    break
-        
-        if mp3_data:
-             return base64.b64encode(mp3_data).decode('utf-8')
-
-        print("Gemini TTS: No audio data returned in response parts.")
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("TTS Service: No API Key found.")
         return None
+
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key={api_key}"
+        
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "contents": [{
+                "parts": [{"text": text}]
+            }],
+            "generationConfig": {
+                "response_modalities": ["AUDIO"]
+            }
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, json=data, timeout=10.0)
+        
+        if response.status_code == 200:
+            result = response.json()
+            # Extract audio
+            candidates = result.get('candidates', [])
+            if candidates:
+                parts = candidates[0].get('content', {}).get('parts', [])
+                for part in parts:
+                    if 'inlineData' in part:
+                        # part['inlineData']['data'] is already base64 string
+                        return part['inlineData']['data']
+            
+            print("Gemini TTS: No audio data found in response.")
+            return None
+        else:
+            print(f"Gemini TTS Error {response.status_code}: {response.text}")
+            return None
 
     except Exception as e:
         print(f"Gemini TTS Generation Error: {e}")

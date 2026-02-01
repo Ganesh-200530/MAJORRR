@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-multipart
+PyJWT
+passlib
+bcrypt==3.2.0
+google-generativeai
+python-dotenv
+requests
+pandas
+scikit-learn
+numpy
+httpx
+pyarrow
