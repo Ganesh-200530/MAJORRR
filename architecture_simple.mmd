@@ -1,0 +1,51 @@
+graph LR
+    %% Theme Settings for "Human-Drawn but Professional" Look
+    classDef handwritten fill:#fff,stroke:#333,stroke-width:2px,stroke-dasharray: 2 5,rx:5,ry:5;
+    classDef solid fill:#f9f9f9,stroke:#000,stroke-width:2px,rx:0,ry:0;
+    
+    %% LEFT: User Input
+    subgraph S1 ["User Layer"]
+        User((User))
+    end
+
+    %% CENTER: The Brain (Processing)
+    subgraph S2 ["Processing Core"]
+        direction TB
+        InputHandler[Input Normalization]
+        
+        %% Split Paths
+        subgraph Logic ["Logic Path"]
+            RAG[Context Retrieval]
+        end
+        
+        subgraph Emotion ["Emotion Path"]
+            Sentiment[Emotion Detection]
+        end
+        
+        %% Fusion
+        Fusion[Response Generator]
+        Safety[Safety Check]
+    end
+
+    %% RIGHT: Output
+    subgraph S3 ["Interaction Layer"]
+        TTS[Voice Synthesis]
+        UI[App Interface]
+    end
+
+    %% Connections
+    User -->|Voice / Text| InputHandler
+    InputHandler --> RAG
+    InputHandler --> Sentiment
+    
+    RAG -->|Found Context| Fusion
+    Sentiment -->|Mood: Anxious| Fusion
+    
+    Fusion --> Safety
+    Safety -->|Safe| TTS
+    Safety -->|Crisis| UI
+    TTS --> UI
+    UI --> User
+
+    %% Styling
+    class User,InputHandler,RAG,Sentiment,Fusion,Safety,TTS,UI solid

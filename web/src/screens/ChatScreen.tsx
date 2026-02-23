@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Send, ArrowLeft, Bot, Mic, MicOff, Volume2, VolumeX, Plus, MessageSquare, Menu, X, Trash2, History, LogOut } from 'lucide-react';
+import { Send, Bot, Mic, MicOff, Volume2, VolumeX, Plus, MessageSquare, Menu, X, Trash2, History, LogOut } from 'lucide-react';
 import clsx from 'clsx';
 
 // Extend Window interface for Web Speech API
@@ -90,7 +90,7 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, currentSessionId]); // Scroll on message add or chat switch
+  }, [messages, currentSessionId, isLoading]); // Scroll on message add or chat switch
 
   // Keep ref updated
   useEffect(() => {
@@ -495,7 +495,7 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
 
             <div className="flex items-center gap-4">
                 <div className="relative group cursor-pointer">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 shadow-inner backdrop-blur-md animate-float group-hover:border-primary/30 transition-colors">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 shadow-inner backdrop-blur-md group-hover:border-primary/30 transition-colors">
                          <Bot className="w-7 h-7 text-primary drop-shadow-[0_0_10px_rgba(74,222,128,0.6)]" />
                     </div>
                     <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#050a08] flex items-center justify-center z-10">

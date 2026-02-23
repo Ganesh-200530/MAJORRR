@@ -7,10 +7,10 @@ from typing import Optional
 from datetime import timedelta
 import uvicorn
 
-from .chat_service import get_chat_response
-from .tts_service import generate_speech
-from . import models, schemas, auth
-from .database import engine, get_db
+from chat_service import get_chat_response
+from tts_service import generate_speech
+import models, schemas, auth
+from database import engine, get_db
 
 # Create Tables
 models.Base.metadata.create_all(bind=engine)
@@ -107,14 +107,38 @@ async def chat_endpoint(request: ChatRequest, current_user_name: str = Depends(g
     """
     Endpoint to receive text chat and return an AI response. Requires Auth.
     """
-    if not request.message:
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    try:
+        if not request.message:
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    # Use the authenticated username
-    result = await get_chat_response(request.session_id, request.message, user_name=current_user_name)
+        # Use the authenticated username
+        if not request.session_id:
+             request.session_id = f"user_{current_user_name}"
+             
+        result = await get_chat_response(request.session_id, request.message, user_name=current_user_name)
+        
+        # Check if result is what we expect
+        if not isinstance(result, dict) or "response" not in result:
+             # Fallback if chat service returns string or error
+             print(f"Unexpected result format: {result}")
+             response_text = result if isinstance(result, str) else "I'm having trouble thinking properly."
+             is_crisis = False
+        else:
+             response_text = result["response"]
+             is_crisis = result["is_crisis"]
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in chat processing: {e}")
+        import traceback
+        traceback.print_exc()
+        # Return a friendly error instead of crashing
+        return ChatResponse(
+            message="I'm having some internal trouble. Please try again later.",
+            suggest_hospitals=False
+        )
     
-    response_text = result["response"]
-    is_crisis = result["is_crisis"]
+    hospital_info = None
     
     hospital_info = None
     if is_crisis:

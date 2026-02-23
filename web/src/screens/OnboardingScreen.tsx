@@ -1,5 +1,4 @@
 import { ArrowRight, MessageSquare, Bot } from 'lucide-react';
-import clsx from 'clsx';
 
 interface Props {
   onStart: () => void;
@@ -15,7 +14,7 @@ export default function OnboardingScreen({ onStart }: Props) {
         {/* Logo / Title */}
         <div className="space-y-6 flex flex-col items-center">
             <div className="relative group">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 shadow-[0_0_30px_rgba(74,222,128,0.2)] backdrop-blur-xl animate-float">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 shadow-[0_0_30px_rgba(74,222,128,0.2)] backdrop-blur-xl">
                         <Bot className="w-12 h-12 text-primary drop-shadow-[0_0_15px_rgba(74,222,128,0.8)]" />
                 </div>
                 <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#050a08] flex items-center justify-center z-10">

@@ -1,8 +1,8 @@
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
-from .prompts import SYSTEM_PROMPT
-from .rag_service import rag_system # Import RAG
+from prompts import SYSTEM_PROMPT
+from rag_service import rag_system # Import RAG
 
 load_dotenv()
 
@@ -56,8 +56,10 @@ class ChatService:
                 )
                 final_prompt = f"{context_str}\n\n{user_input}"
 
-            response = self.chat_session.send_message(final_prompt)
+            print(f"Chat Service: Sending to Gemini (User: {self.user_name})...")
+            response = await self.chat_session.send_message_async(final_prompt)
             text_response = response.text
+            print("Chat Service: Received response.")
             
             is_crisis = False
             if text_response.startswith("CRISIS_DETECTED:"):
@@ -85,8 +87,8 @@ class ChatService:
 # In a real app, you'd manage sessions per user ID.
 chat_instances = {}
 
-def get_chat_response(session_id: str, text: str, user_name: str = "Friend"):
+async def get_chat_response(session_id: str, text: str, user_name: str = "Friend"):
     if session_id not in chat_instances:
         chat_instances[session_id] = ChatService(user_name=user_name)
     
-    return chat_instances[session_id].get_response(text)
+    return await chat_instances[session_id].get_response(text)

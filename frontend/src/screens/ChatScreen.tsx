@@ -13,8 +13,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Send, Menu } from 'lucide-react-native';
+import { Send, Menu, LogOut } from 'lucide-react-native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -24,7 +25,7 @@ import { ChatBubble } from '../components/ChatBubble';
 
 // --- CONFIG --- 
 // Using 10.0.2.2 for Android Emulator, localhost for iOS
-const API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+const API_URL = 'http://192.168.29.173:8000';
 
 interface Message {
   id: string;
@@ -35,6 +36,7 @@ interface Message {
 
 type RootStackParamList = {
   Onboarding: undefined;
+  Auth: undefined;
   Chat: undefined;
 };
 
@@ -50,6 +52,15 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem('userToken');
+    await AsyncStorage.removeItem('userName');
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Auth' }],
+    });
+  };
+
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
@@ -64,11 +75,26 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
     setIsLoading(true);
 
     try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert('Error', 'No authentication token found. Please log in again.');
+        await handleLogout();
+        return;
+      }
+
       // NOTE: Replace with your machine's IP if running on physical device
-      const response = await axios.post(`${API_URL}/chat`, {
-        session_id: 'mobile-user',
-        message: userMsg.text
-      });
+      const response = await axios.post(
+        `${API_URL}/chat`, 
+        {
+          session_id: 'mobile-user',
+          message: userMsg.text
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
 
       const data = response.data;
       
@@ -89,8 +115,13 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
         );
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          Alert.alert('Session Expired', 'Please log in again.');
+          await handleLogout();
+          return;
+      }
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         text: "I'm having trouble connecting to my brain right now. 🧠💤 Check your internet?",
@@ -127,9 +158,12 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
                 </TouchableOpacity>
 
                 <View style={styles.headerTitleContainer}>
-                    <Text style={styles.headerTitle}>NEW CHAT</Text>
+                    <Text style={styles.headerTitle}>CHAT</Text>
                 </View>
             </View>
+            <TouchableOpacity onPress={handleLogout} style={{ padding: 8 }}>
+                <LogOut color="rgba(255,255,255,0.7)" size={20} />
+            </TouchableOpacity>
         </View>
 
         {/* CHAT AREA */}

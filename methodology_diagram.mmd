@@ -1,0 +1,63 @@
+graph LR
+    %% Professional Theme - Blue/Grey/White
+    classDef process fill:#ffffff,stroke:#333,stroke-width:1px,rx:5,ry:5;
+    classDef system fill:#f5f7fa,stroke:#0d47a1,stroke-width:2px;
+    classDef data fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,shape:cylinder;
+    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:1px,stroke-dasharray: 5 5;
+    classDef user fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+
+    %% 1. User Layer
+    subgraph UI_Layer [User Interface & Capture]
+        direction TB
+        User((User)) -->|Voice/Text| Frontend[React Client<br/>'Liquid Glass' UI]
+        Frontend -->|Raw Audio| API_STT[Google STT API]
+        API_STT -->|Transcript| Frontend
+        class User user
+        class Frontend process
+        class API_STT external
+    end
+
+    %% 2. Processing Layer
+    subgraph Processing_Layer [Request Processing]
+        direction TB
+        Frontend -->|JSON Request| Server[FastAPI Server]
+        Server --> Auth[JWT Authentication]
+        Auth --> Safety[Crisis Monitor<br/>Keyword Scanner]
+        
+        Safety -.->|High Risk| Crisis[Crisis Protocol<br/>Hospital Locator]
+        class Server,Auth,Safety,Crisis process
+    end
+    
+    %% 3. Intelligence Layer
+    subgraph Intelligence_Layer [Core Intelligence]
+        direction TB
+        Safety -->|Safe Context| RAG[RAG Engine<br/>TF-IDF Search]
+        
+        subgraph Knowledge_Base [Data Source]
+            Dataset[(Mental Health<br/>Dataset CSV)]
+        end
+        
+        RAG <-->|Vector Similiarity| Dataset
+        
+        RAG -->|Retrieved Context| Context[Context Fusion]
+        Context -->|Augmented Prompt| LLM[Google Gemini 2.0<br/>Generative Model]
+        
+        class RAG,Context process
+        class Dataset data
+        class LLM external
+    end
+
+    %% 4. Response Layer
+    subgraph Output_Layer [Response Generation]
+        direction TB
+        LLM -->|Raw Text| Server
+        Crisis -->|Alert Data| Server
+        
+        Server -->|Text| API_TTS[Google TTS API]
+        API_TTS -->|Audio Base64| Server
+        
+        class API_TTS external
+    end
+
+    %% 5. Feedback Loop
+    Server -->|Final Payload| Frontend

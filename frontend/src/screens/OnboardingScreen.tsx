@@ -11,6 +11,7 @@ import { GlassContainer } from '../components/GlassContainer';
 
 type RootStackParamList = {
   Onboarding: undefined;
+  Auth: undefined;
   Chat: undefined;
 };
 
@@ -19,6 +20,10 @@ type OnboardingScreenProps = {
 };
 
 export default function OnboardingScreen({ navigation }: OnboardingScreenProps) {
+  const handleStart = () => {
+    navigation.navigate('Auth');
+  };
+
   return (
     <LinearGradient
       colors={[theme.backgroundStart, theme.backgroundEnd]}
@@ -45,7 +50,7 @@ export default function OnboardingScreen({ navigation }: OnboardingScreenProps) 
             <View style={{ flex: 1 }} />
 
             {/* Main Action Button */}
-            <TouchableOpacity onPress={() => navigation.replace('Chat')} activeOpacity={0.8}>
+            <TouchableOpacity onPress={handleStart} activeOpacity={0.8}>
                 <View style={styles.startButton}>
                     <Text style={styles.startButtonText}>Let's Begin</Text>
                     <View style={styles.arrowIcon}>
