@@ -4,9 +4,9 @@ import ChatScreen from './screens/ChatScreen';
 import AuthScreen from './screens/AuthScreen';
 
 function App() {
-  const [screen, setScreen] = useState<'onboarding' | 'auth' | 'chat'>('onboarding');
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [userName, setUserName] = useState<string | null>(localStorage.getItem('username'));
+  const [screen, setScreen] = useState<'onboarding' | 'auth' | 'chat'>('auth');
+  const [token, setToken] = useState<string | null>(sessionStorage.getItem('token'));
+  const [userName, setUserName] = useState<string | null>(sessionStorage.getItem('username'));
 
   useEffect(() => {
     // If we have a token on load, go straight to chat
@@ -16,16 +16,16 @@ function App() {
   }, [token]);
 
   const handleAuthSuccess = (newToken: string, newUserName: string) => {
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('username', newUserName);
+      sessionStorage.setItem('token', newToken);
+      sessionStorage.setItem('username', newUserName);
       setToken(newToken);
       setUserName(newUserName);
       setScreen('chat');
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('username');
     setToken(null);
     setUserName(null);
     setScreen('auth'); // Go to auth instead of onboarding on logout

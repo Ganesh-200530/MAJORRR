@@ -19,7 +19,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [initialRoute, setInitialRoute] = useState<'Onboarding' | 'Auth' | 'Chat'>('Onboarding');
+  const [initialRoute, setInitialRoute] = useState<'Onboarding' | 'Auth' | 'Chat'>('Auth');
 
   useEffect(() => {
     checkLoginStatus();

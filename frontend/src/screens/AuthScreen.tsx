@@ -108,7 +108,7 @@ export default function AuthScreen({ navigation }: Props) {
     <View style={styles.container}>
       <StatusBar style="light" />
       <LinearGradient
-        colors={['#050a08', '#0a1512', '#050a08']}
+        colors={['#0B0D0E', '#0B0D0E', '#0B0D0E']}
         style={StyleSheet.absoluteFill}
       />
       
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00E5FF', // Primary color
+    backgroundColor: '#ffffff', // Matched with Web/Onboarding Theme
     borderRadius: 12,
     height: 56,
     marginTop: 8,

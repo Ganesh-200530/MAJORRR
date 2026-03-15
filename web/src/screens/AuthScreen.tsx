@@ -1,164 +1,160 @@
 import { useState } from 'react';
 import axios from 'axios';
-import clsx from 'clsx';
-import { User, Lock, Mail, ArrowRight, Loader, Eye, EyeOff } from 'lucide-react';
+import { Bot, User, Lock, Mail } from 'lucide-react';
 
-interface AuthScreenProps {
-    onAuthSuccess: (token: string, username: string) => void;
+interface Props {
+  onAuthSuccess: (token: string, username: string) => void;
 }
 
-export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
-    const [isLogin, setIsLogin] = useState(true);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    
-    // Form State
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [email, setEmail] = useState('');
+export default function AuthScreen({ onAuthSuccess }: Props) {
+  const [isLogin, setIsLogin] = useState(true);
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password || (!isLogin && !email) || !username) return;
 
-        try {
-            if (isLogin) {
-                // Login Flow (OAuth2 Form Data)
-                const formData = new FormData();
-                formData.append('username', username);
-                formData.append('password', password);
-                
-                const response = await axios.post('http://localhost:8000/token', formData);
-                const { access_token, username: user_name } = response.data;
-                onAuthSuccess(access_token, user_name);
-            } else {
-                // Signup Flow (JSON)
-                const response = await axios.post('http://localhost:8000/signup', {
-                    username,
-                    email,
-                    password
-                });
-                const { access_token, username: user_name } = response.data;
-                onAuthSuccess(access_token, user_name);
-            }
-        } catch (err: any) {
-            console.error(err);
-            if (err.response) {
-                 setError(err.response.data.detail || 'Authentication failed');
-            } else {
-                 setError('Network error. Please try again.');
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    setLoading(true);
+    setError(null);
+    try {
+      const BASE_URL = 'http://localhost:8000'; // Make sure this matches your backend
+      let response;
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-[#050a08] relative overflow-hidden">
-             {/* Liquid Background */}
-            <div className="liquid-bg pointer-events-none opacity-50" />
+      if (isLogin) {
+        const formData = new URLSearchParams();
+        formData.append('username', username);
+        formData.append('password', password);
+        
+        response = await axios.post(`${BASE_URL}/token`, formData, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+      } else {
+        response = await axios.post(`${BASE_URL}/signup`, {
+            username,
+            email,
+            password
+        });
+      }
+
+      const { access_token, username: user } = response.data;
+      onAuthSuccess(access_token, user);
+
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.detail || 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen text-white bg-background selection:bg-primary selection:text-white p-6 relative overflow-hidden font-sans">
+      
+      {/* Liquid Background */}
+      <div className="liquid-bg pointer-events-none" />
+
+      {/* Glass Card */}
+      <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl animate-fade-in-up md:p-10">
+        
+        {/* Header */}
+        <div className="flex flex-col items-center mb-8 space-y-2 text-center">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(129,140,248,0.2)] mb-4">
+                <Bot className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-3xl font-light tracking-tight text-white/90">
+                {isLogin ? 'Welcome Back' : 'Join Us'}
+            </h2>
+            <p className="text-sm text-slate-400">
+                {isLogin ? 'Sign in to continue finding your calm' : 'Start your journey to inner peace'}
+            </p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-200 text-sm p-3 rounded-lg flex items-center mb-6">
+                <span>{error}</span>
+            </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
             
-            <div className="w-full max-w-md p-8 m-4 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl animate-fade-in-up">
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
-                        {isLogin ? 'Welcome Back' : 'Join MindEase'}
-                    </h1>
-                    <p className="text-white/50 text-sm">
-                        {isLogin ? 'Your supportive AI friend is waiting.' : 'Start your journey to better mental wellness.'}
-                    </p>
-                </div>
-
-                {error && (
-                    <div className="mb-6 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-200 text-sm text-center">
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-4">
-                        <div className="relative group">
-                            <User className="absolute left-4 top-3.5 w-5 h-5 text-white/40 group-focus-within:text-primary transition-colors" />
-                            <input 
-                                type="text"
-                                placeholder="Username"
-                                value={username}
-                                onChange={e => setUsername(e.target.value)}
-                                className="w-full bg-black/20 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/30 focus:outline-none focus:border-primary/50 focus:bg-black/40 transition-all"
-                                required
-                            />
-                        </div>
-
-                        {!isLogin && (
-                            <div className="relative group">
-                                <Mail className="absolute left-4 top-3.5 w-5 h-5 text-white/40 group-focus-within:text-primary transition-colors" />
-                                <input 
-                                    type="email"
-                                    placeholder="Email Address"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/30 focus:outline-none focus:border-primary/50 focus:bg-black/40 transition-all"
-                                    required
-                                />
-                            </div>
-                        )}
-
-                        <div className="relative group">
-                            <Lock className="absolute left-4 top-3.5 w-5 h-5 text-white/40 group-focus-within:text-primary transition-colors" />
-                            <input 
-                                type={showPassword ? "text" : "password"}
-                                placeholder="Password"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                className="w-full bg-black/20 border border-white/10 rounded-xl px-12 py-3.5 text-white placeholder-white/30 focus:outline-none focus:border-primary/50 focus:bg-black/40 transition-all pr-12"
-                                required
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-3.5 text-white/40 hover:text-white transition-colors"
-                            >
-                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                            </button>
-                        </div>
-                    </div>
-
-                    <button 
-                        type="submit"
-                        disabled={isLoading}
-                        className={clsx(
-                            "w-full bg-primary text-black font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(74,222,128,0.3)] hover:shadow-[0_0_30px_rgba(74,222,128,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-6",
-                            isLoading && "opacity-70 cursor-not-allowed"
-                        )}
-                    >
-                        {isLoading ? (
-                            <Loader className="w-5 h-5 animate-spin" />
-                        ) : (
-                            <>
-                                {isLogin ? 'Sign In' : 'Create Account'}
-                                <ArrowRight className="w-5 h-5" />
-                            </>
-                        )}
-                    </button>
-                </form>
-
-                <div className="mt-8 text-center text-sm">
-                    <p className="text-white/40">
-                        {isLogin ? "Don't have an account?" : "Already have an account?"}
-                        <button 
-                            onClick={() => {
-                                setIsLogin(!isLogin);
-                                setError('');
-                            }}
-                            className="text-primary hover:text-green-300 font-medium ml-1 transition-colors"
-                        >
-                            {isLogin ? 'Sign Up' : 'Log In'}
-                        </button>
-                    </p>
+            <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wilder ml-1">Username</label>
+                <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-primary transition-colors" />
+                    <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-light"
+                        placeholder="Enter your username"
+                        required
+                    />
                 </div>
             </div>
-        </div>
-    );
-}
 
+            {!isLogin && (
+                <div className="space-y-1 animate-fade-in-down">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wilder ml-1">Email</label>
+                    <div className="relative group">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-primary transition-colors" />
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-light"
+                            placeholder="hello@example.com"
+                            required
+                        />
+                    </div>
+                </div>
+            )}
+
+            <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wilder ml-1">Password</label>
+                <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-primary transition-colors" />
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full bg-black/20 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-light"
+                        placeholder="••••••••"
+                        required
+                    />
+                </div>
+            </div>
+
+            <button
+                type="submit"
+                disabled={loading}
+                className={`w-full py-4 mt-6 rounded-xl font-medium text-white shadow-lg shadow-primary/20 transition-all transform hover:scale-[1.02] active:scale-95 flex justify-center items-center ${loading ? 'bg-slate-700 cursor-not-allowed' : 'bg-gradient-to-r from-primary to-accent hover:to-primary'}`}
+            >
+                {loading ? (
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                    isLogin ? 'Sign In' : 'Create Account'
+                )}
+            </button>
+        </form>
+
+        {/* Footer Toggle */}
+        <div className="mt-8 text-center">
+            <button 
+                onClick={() => { setIsLogin(!isLogin); setError(null); }}
+                className="text-slate-400 text-sm hover:text-white transition-colors"
+            >
+                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                <span className="text-primary font-medium hover:underline">{isLogin ? 'Sign Up' : 'Log In'}</span>
+            </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}

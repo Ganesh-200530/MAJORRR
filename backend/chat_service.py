@@ -11,7 +11,7 @@ api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     print("CRITICAL: GEMINI_API_KEY not found in environment variables.")
 else:
-    print(f"Chat Service: API Key loaded ({api_key[:5]}...)")
+    print(f"Chat Service: API Key loaded ({api_key[:10]}...)")
 
 genai.configure(api_key=api_key)
 
@@ -62,24 +62,35 @@ class ChatService:
             print("Chat Service: Received response.")
             
             is_crisis = False
-            if text_response.startswith("CRISIS_DETECTED:"):
+            anxiety_detected = False
+            if text_response.startswith("CRISIS_DETECTED:") or "CRISIS_DETECTED:" in text_response:
                 is_crisis = True
                 text_response = text_response.replace("CRISIS_DETECTED:", "").strip()
+                
+            if text_response.startswith("ANXIETY_DETECTED:") or "ANXIETY_DETECTED:" in text_response:
+                anxiety_detected = True
+                text_response = text_response.replace("ANXIETY_DETECTED:", "").strip()
 
             return {
                 "response": text_response,
-                "is_crisis": is_crisis
+                "is_crisis": is_crisis,
+                "anxiety_detected": anxiety_detected
             }
         except Exception as e:
+            error_msg = str(e)
+            print(f"Error communicating with Gemini: {error_msg}")
+            
             import traceback
             traceback.print_exc()
-            print(f"Error communicating with Gemini: {e}")
+
+            if "429" in error_msg or "quota" in error_msg.lower():
+                return {
+                    "response": "I'm currently overwhelmed with too many thoughts! (API Quota Exceeded). Please update my API Key in the .env file.",
+                    "is_crisis": False
+                }
+            
             return {
-                "response": f"I'm having trouble thinking right now. Error: {str(e)}",
-                "is_crisis": False
-            }
-            return {
-                "response": "I'm having a bit of trouble connecting right now, but I'm still here with you. Can you say that again?",
+                "response": "I'm having a bit of trouble connecting right now, but I'm still here with you.",
                 "is_crisis": False
             }
 

@@ -1,24 +1,22 @@
-// Dark / Neon Glass Theme
-// Primary: #34D399 (Emerald 400ish)
-// Background: #0B0F12 (Soft black) to #11221C (Deep Green)
+// Dark / Neo Theme matching Web Chat
 export const theme = {
-  backgroundStart: '#050a08',
-  backgroundEnd: '#132e27',
+  backgroundStart: '#0B0D0E',
+  backgroundEnd: '#0B0D0E',
   
-  primary: '#4ade80',    // Bright green/teal (User bubbles, accents)
-  onPrimary: '#002e1a',  // Dark text on primary button
+  primary: '#1A1D20',    // User bubble
+  onPrimary: '#f3f4f6',  // Text on user bubble
   
-  surface: 'rgba(255, 255, 255, 0.08)', // Glassy cards
-  surfaceBorder: 'rgba(255, 255, 255, 0.12)',
+  surface: '#151719', // AI bubble / elements
+  surfaceBorder: 'rgba(255, 255, 255, 0.05)',
   
-  text: '#ffffff',       // Primary text
-  textSecondary: '#a1a1aa', // Muted text
+  text: '#e5e7eb',       // Primary text
+  textSecondary: '#9ca3af', // Muted text
   
   accent: '#f87171',     // Red for crisis
   
   // Gradients for cards or bubbles
   glassWrapper: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#151719',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   }
 };

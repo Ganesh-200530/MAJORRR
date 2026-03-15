@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Body, Depends, status
+﻿from fastapi import FastAPI, HTTPException, Body, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -84,19 +84,61 @@ class ChatRequest(BaseModel):
     session_id: str
     message: str
     user_name: Optional[str] = "Friend" # Client can still send this for legacy or if we want logic override
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class ChatResponse(BaseModel):
     message: str
     suggest_hospitals: bool
     hospital_data: Optional[list] = None
     audio_base64: Optional[str] = None
+    anxiety_detected: bool = False
 
-# Mock hospital data - In real app, fetch from Maps API based on user location
+import requests
+
+# Fallback hospital data
 HOSPITALS = [
-    {"name": "City General Hospital", "address": "123 Main St", "contact": "555-0199"},
-    {"name": "Sunrise Mental Health Clinic", "address": "456 Hope Ave", "contact": "555-0200"},
-    {"name": "Emergency Care Center", "address": "789 Health Dr", "contact": "555-0201"}
+    {"name": "NIMHANS (National Institute of Mental Health)", "address": "Hosur Road, Bengaluru, India", "contact": "080-26995000"},
+    {"name": "AASRA Suicide Prevention Center", "address": "Navi Mumbai, Maharashtra, India", "contact": "9820466726"},
+    {"name": "Vandrevala Foundation", "address": "All India Helpline", "contact": "9999 666 555"},
+    {"name": "Kiran Mental Health Helpline", "address": "Govt of India", "contact": "1800-599-0019"}
 ]
+
+def get_nearby_hospitals(lat: float, lon: float) -> list:
+    overpass_url = "http://overpass-api.de/api/interpreter"
+    overpass_query = f"""
+    [out:json];
+    (
+      node["amenity"="hospital"](around:5000,{lat},{lon});
+      way["amenity"="hospital"](around:5000,{lat},{lon});
+      relation["amenity"="hospital"](around:5000,{lat},{lon});
+      node["amenity"="clinic"](around:5000,{lat},{lon});
+    );
+    out center;
+    """
+    try:
+        response = requests.get(overpass_url, params={'data': overpass_query}, timeout=5)
+        data = response.json()
+        hospitals = []
+        for element in data.get('elements', [])[:3]:
+            tags = element.get('tags', {})
+            name = tags.get('name', 'Local Hospital / Clinic')
+            street = tags.get('addr:street', '')
+            city = tags.get('addr:city', '')
+            contact = tags.get('phone', tags.get('contact:phone', 'Check local directory'))
+            address = f"{street}, {city}".strip(", ")
+            if not address:
+                address = "Address not listed"
+            hospitals.append({
+                "name": name,
+                "address": address,
+                "contact": contact
+            })
+        if hospitals:
+            return hospitals
+    except Exception as e:
+        print(f"Error fetching nearby hospitals: {e}")
+    return HOSPITALS
 
 @app.get("/")
 def read_root():
@@ -123,9 +165,11 @@ async def chat_endpoint(request: ChatRequest, current_user_name: str = Depends(g
              print(f"Unexpected result format: {result}")
              response_text = result if isinstance(result, str) else "I'm having trouble thinking properly."
              is_crisis = False
+             anxiety_detected = False
         else:
              response_text = result["response"]
-             is_crisis = result["is_crisis"]
+             is_crisis = result.get("is_crisis", False)
+             anxiety_detected = result.get("anxiety_detected", False)
     except HTTPException:
         raise
     except Exception as e:
@@ -135,14 +179,16 @@ async def chat_endpoint(request: ChatRequest, current_user_name: str = Depends(g
         # Return a friendly error instead of crashing
         return ChatResponse(
             message="I'm having some internal trouble. Please try again later.",
-            suggest_hospitals=False
+            suggest_hospitals=False,
+            anxiety_detected=False
         )
     
     hospital_info = None
-    
-    hospital_info = None
     if is_crisis:
-        hospital_info = HOSPITALS
+        if request.latitude and request.longitude:
+            hospital_info = get_nearby_hospitals(request.latitude, request.longitude)
+        else:
+            hospital_info = HOSPITALS
         response_text += "\n\nI've also listed some nearby hospitals and helplines if you need immediate professional support."
 
     # Generate Audio
@@ -152,8 +198,12 @@ async def chat_endpoint(request: ChatRequest, current_user_name: str = Depends(g
         message=response_text,
         suggest_hospitals=is_crisis,
         hospital_data=hospital_info,
-        audio_base64=audio_data
+        audio_base64=audio_data,
+        anxiety_detected=anxiety_detected
     )
 
 if __name__ == "__main__":
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+
+
