@@ -17,3 +17,11 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+class UserSettings(BaseModel):
+    caregiver_email: Optional[str] = None
+
+class UserDashboard(BaseModel):
+    mood_history: str
+    daily_quests: str
+    caregiver_email: Optional[str] = None

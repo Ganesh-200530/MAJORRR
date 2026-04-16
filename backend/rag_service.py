@@ -4,6 +4,7 @@ import warnings
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import pickle
 
 # Suppress common data science warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -32,7 +33,23 @@ class RagService:
 
     def load_data(self):
         """Loads train.csv and creates query-response pairs"""
-        print("RAG Service: Loading dataset...")
+        cache_path = os.path.join(self.data_path, "rag_cache.pkl")
+        if os.path.exists(cache_path):
+            print("RAG Service: Loading from fast cache (skipping slow vectorization)...")
+            try:
+                with open(cache_path, 'rb') as f:
+                    data = pickle.load(f)
+                    self.vectorizer = data['vectorizer']
+                    self.queries = data['queries']
+                    self.responses = data['responses']
+                    self.tfidf_matrix = data['matrix']
+                print("RAG Service: Ready.")
+                return
+            except Exception as e:
+                print(f"RAG Service: Failed to load cache, rebuilding... {e}")
+                pass
+
+        print("RAG Service: Building dataset and vectors from scratch...")
         try:
             train_path = os.path.join(self.data_path, "train.csv")
             valid_path = os.path.join(self.data_path, "valid.csv")
@@ -86,6 +103,15 @@ class RagService:
             
             print(f"RAG Service: Vectorizing {len(self.queries)} pairs...")
             self.tfidf_matrix = self.vectorizer.fit_transform(self.queries)
+            
+            print("RAG Service: Caching results to disk for faster future startups...")
+            with open(cache_path, 'wb') as f:
+                pickle.dump({
+                    'vectorizer': self.vectorizer,
+                    'queries': self.queries,
+                    'responses': self.responses,
+                    'matrix': self.tfidf_matrix
+                }, f)
             print("RAG Service: Ready.")
             
         except Exception as e:

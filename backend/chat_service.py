@@ -40,23 +40,30 @@ class ChatService:
         )
         self.chat_session = self.model.start_chat(history=[])
 
-    async def get_response(self, user_input: str) -> dict:
+    async def get_response(self, user_input: str, language: str = "Auto-Detect") -> dict:
         try:
             # 1. RAG Lookup
             rag_context = rag_system.find_relevant_context(user_input)
             
+            # 2. Language constraint
+            lang_constraint = ""
+            if language and language != "Auto-Detect":
+                lang_constraint = f"\n\n[MANDATORY EXPLICIT INSTRUCTION: YOU MUST REPLY TO THE FOLLOWING USER MESSAGE ENTIRELY IN {language.upper()}. NO EXCEPTIONS.]\n"
+
             final_prompt = user_input
             if rag_context:
                 print(f"RAG: Found similar context (similarity: {rag_context['similarity']:.2f})")
                 context_str = (
-                    f"Reference-Context:\n"
-                    f"User said: \"{rag_context['matched_user_msg']}\"\n"
-                    f"Helpful response was: \"{rag_context['matched_bot_response']}\"\n"
-                    f"Now respond to the current user message below using this tone:"
+                    f"RAG Inspiration Context (DO NOT copy this exactly, just use the VIBE or underlying advice to form a completely NEW response):\n"
+                    f"Past similar situation: \"{rag_context['matched_user_msg']}\"\n"
+                    f"Helpful past response: \"{rag_context['matched_bot_response']}\"\n"
+                    f"Now, maintaining a fresh and non-repetitive dialogue, respond to the current user message below:\n"
                 )
-                final_prompt = f"{context_str}\n\n{user_input}"
+                final_prompt = f"{context_str}\n{lang_constraint}{user_input}"
+            else:
+                final_prompt = f"{lang_constraint}{user_input}"
 
-            print(f"Chat Service: Sending to Gemini (User: {self.user_name})...")
+            print(f"Chat Service: Sending to Gemini (User: {self.user_name}, Lang: {language})...")
             response = await self.chat_session.send_message_async(final_prompt)
             text_response = response.text
             print("Chat Service: Received response.")
@@ -98,8 +105,8 @@ class ChatService:
 # In a real app, you'd manage sessions per user ID.
 chat_instances = {}
 
-async def get_chat_response(session_id: str, text: str, user_name: str = "Friend"):
+async def get_chat_response(session_id: str, text: str, user_name: str = "Friend", language: str = "Auto-Detect"):
     if session_id not in chat_instances:
         chat_instances[session_id] = ChatService(user_name=user_name)
     
-    return await chat_instances[session_id].get_response(text)
+    return await chat_instances[session_id].get_response(text, language=language)

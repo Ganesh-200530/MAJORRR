@@ -1,0 +1,5 @@
+endpoint,method,runs,avg_ms,min_ms,max_ms,p95_ms,std_ms,status_codes,notes
+GET /,GET,5,18.844,5.145,27.208,26.337,7.532,200,Root endpoint
+POST /signup,POST,5,442.121,424.697,483.721,474.990,21.381,200,New account creation
+POST /token,POST,5,419.898,412.340,436.933,434.203,9.403,200,OAuth2 token issue
+POST /chat,POST,5,8206.322,4071.333,11601.100,11330.963,3016.208,200,Includes model + TTS path as configured

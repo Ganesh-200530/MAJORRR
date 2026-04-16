@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Send, LogOut, Bot, User, Clock, MessageSquare, Plus, Mic, Volume2, Trash2 } from 'lucide-react';
+import { Send, LogOut, Bot, Clock, MessageSquare, Plus, Mic, Volume2, Trash2, Activity } from 'lucide-react';
+import { THEMES } from '../theme';
+import { DashboardModal } from '../components/DashboardModal';
 
 interface Props {
   onBack: () => void;
@@ -31,11 +33,15 @@ interface ChatSession {
 const API_URL = 'http://localhost:8000'; // Make sure this matches your backend
 
 export default function ChatScreen({ onBack, token, userName }: Props) {
-  const defaultMessage: Message = { 
-    id: '1', 
+  const defaultMessage: Message = {
+    id: '1',
     text: `Hi ${userName}! I'm MindEase. How are you feeling today?`, 
     sender: 'ai' 
   };
+
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [activeThemeKey, setActiveThemeKey] = useState<keyof typeof THEMES>('dark');
+  const activeTheme = THEMES[activeThemeKey];
 
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
     const saved = localStorage.getItem(`chat_history_${userName}`);
@@ -93,6 +99,15 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Basic web push notification permission
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
+  }, []);
 
   const handleNewConversation = () => {
     const newSession: ChatSession = {
@@ -225,15 +240,35 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
   };
 
   return (
-    <div className="flex h-screen bg-[#0A0C0E] text-white font-sans selection:bg-emerald-500/30 overflow-hidden">
+    <>
+    <DashboardModal 
+      isOpen={isDashboardOpen} 
+      onClose={() => setIsDashboardOpen(false)} 
+      token={token} 
+      themeKey={activeThemeKey} 
+      setThemeKey={setActiveThemeKey} 
+    />
+    <div style={{ backgroundColor: activeTheme.backgroundStart, color: activeTheme.text }} className="flex h-screen font-sans selection:bg-emerald-500/30 overflow-hidden">
       
       {/* LEFT SIDEBAR */}
-      <div className="w-[300px] bg-[#111315] border-r border-white/5 flex flex-col justify-between hidden md:flex">
+      <div style={{ backgroundColor: activeTheme.surface, borderColor: activeTheme.surfaceBorder }} className="w-[300px] border-r flex flex-col justify-between hidden md:flex">
         <div className="flex flex-col h-full">
             {/* History Header */}
             <div className="p-6 pb-2 flex items-center gap-3 text-slate-200">
                 <Clock className="w-5 h-5 text-green-400" />
                 <h2 className="text-lg font-semibold tracking-wide">History</h2>
+            </div>
+
+            {/* Dashboard Button */}
+            <div className="px-4 py-2 shrink-0">
+                <button
+                  onClick={() => setIsDashboardOpen(true)}
+                  style={{ backgroundColor: activeTheme.surface, borderColor: activeTheme.surfaceBorder, color: activeTheme.onPrimary }}
+                  className="w-full hover:brightness-110 border transition-colors font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg"
+                >
+                    <Activity className="w-5 h-5 text-blue-400" />
+                    Dashboard & Settings
+                </button>
             </div>
 
             {/* Default Chat Session Creation */}
@@ -277,7 +312,7 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
             </div>
 
             {/* User Profile Footer */}
-            <div className="mt-auto p-4 border-t border-white/5 bg-[#0D0F11]">
+            <div style={{ backgroundColor: activeTheme.surfaceBorder }} className="mt-auto p-4 border-t border-white/5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         {/* Initials Avatar */}
@@ -302,7 +337,7 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
       </div>
 
       {/* MAIN CHAT AREA */}
-      <div className="flex-1 flex flex-col relative bg-[#0D0F12]">
+      <div style={{ backgroundColor: activeTheme.backgroundEnd }} className="flex-1 flex flex-col relative">
         
         {/* Header */}
         <header className="px-6 py-6 flex justify-between items-center z-10 shadow-sm relative">
@@ -398,7 +433,7 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 md:px-8 pb-6 bg-[#0D0F12] w-full max-w-4xl mx-auto">
+        <div style={{ backgroundColor: activeTheme.backgroundEnd }} className="p-4 md:px-8 pb-6 w-full max-w-4xl mx-auto">
             <div className="relative group flex items-center">
                 <input
                     type="text"
@@ -407,7 +442,8 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     placeholder="Type your message..."
                     disabled={isLoading}
-                    className="w-full bg-[#151719] border-2 border-white/5 hover:border-white/10 rounded-full py-4 pl-6 pr-24 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#2ECC71]/30 focus:bg-[#1A1D20] transition-all text-sm"
+                    style={{ backgroundColor: activeTheme.glassWrapper.backgroundColor, borderColor: activeTheme.glassWrapper.borderColor, color: activeTheme.text }}
+                    className="w-full border hover:border-white/20 rounded-full py-4 pl-6 pr-24 placeholder-gray-600 focus:outline-none focus:border-[#2ECC71]/30 transition-all text-sm"
                 />
                 
                 {/* Input Actions */}
@@ -435,5 +471,6 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
 
       </div>
     </div>
+    </>
   );
 }
