@@ -43,7 +43,7 @@ export default function AuthScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async () => {
-    if (!username || !password || (!isLogin && !email)) {
+    if (!email || !password || (!isLogin && !username)) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -54,7 +54,9 @@ export default function AuthScreen({ navigation }: Props) {
       if (isLogin) {
         // Login Flow (FormData for OAuth2)
         const formData = new FormData();
-        formData.append('username', username);
+        // Since we are now using email to login, we send email as the "username" field 
+        // to match standard OAuth2 endpoints
+        formData.append('username', email);
         formData.append('password', password);
         
         // Note: Axios with FormData in React Native can be tricky, sometimes better to use fetch or verify headers
@@ -127,32 +129,32 @@ export default function AuthScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <User color="rgba(255,255,255,0.4)" size={20} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Username"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-              />
-            </View>
-
             {!isLogin && (
               <View style={styles.inputContainer}>
-                <Mail color="rgba(255,255,255,0.4)" size={20} style={styles.inputIcon} />
+                <User color="rgba(255,255,255,0.4)" size={20} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Email Address"
+                  placeholder="Username"
                   placeholderTextColor="rgba(255,255,255,0.3)"
-                  value={email}
-                  onChangeText={setEmail}
+                  value={username}
+                  onChangeText={setUsername}
                   autoCapitalize="none"
-                  keyboardType="email-address"
                 />
               </View>
             )}
+
+            <View style={styles.inputContainer}>
+              <Mail color="rgba(255,255,255,0.4)" size={20} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Email Address"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
 
             <View style={styles.inputContainer}>
               <Lock color="rgba(255,255,255,0.4)" size={20} style={styles.inputIcon} />

@@ -32,8 +32,8 @@ export const ClayContainer: React.FC<ClayContainerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.background,
-    shadowColor: theme.shadowDark,
+    backgroundColor: theme.backgroundStart,
+    shadowColor: '#000',
     shadowOffset: { width: 8, height: 8 },
     shadowOpacity: 0.5,
     // Note: To achieve true claymorphism on Android, we rely on elevation.

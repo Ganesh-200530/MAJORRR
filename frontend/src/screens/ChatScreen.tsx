@@ -15,15 +15,30 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Send, Menu, LogOut, X, MessageSquare, Plus, Trash2, User, Mic } from 'lucide-react-native';
+import { Send, Menu, LogOut, X, MessageSquare, Plus, Trash2, User, Mic, Globe, Activity } from 'lucide-react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
+import { Audio } from 'expo-av';
+import * as Notifications from 'expo-notifications';
 
-import { theme } from '../theme';
+import { THEMES } from '../theme';
 import { GlassContainer } from '../components/GlassContainer';
 import { ChatBubble } from '../components/ChatBubble';
+import { TypingIndicator } from '../components/TypingIndicator';
+import { DashboardModal } from '../components/DashboardModal';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true
+  }),
+});
 
 // --- CONFIG --- 
 // Using 10.0.2.2 for Android Emulator, localhost for iOS
@@ -42,6 +57,10 @@ interface Message {
   isCrisis?: boolean;
   isAnxiety?: boolean;
   hospitalData?: Hospital[];
+  replyTo?: {
+    text: string;
+    isUser: boolean;
+  };
 }
 
 interface ChatSession {
@@ -67,30 +86,127 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
   const [activeSessionId, setActiveSessionId] = useState<string>('');
   
   const [inputText, setInputText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<'Auto-Detect' | 'English' | 'Spanish' | 'Hindi' | 'Telugu' | 'French'>('Auto-Detect');
+  const [location, setLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecordingDictation, setIsRecordingDictation] = useState(false);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [activeThemeKey, setActiveThemeKey] = useState<keyof typeof THEMES>('dark');
   const flatListRef = useRef<FlatList>(null);
+
+  const activeTheme = THEMES[activeThemeKey];
   
   const micScale = useRef(new Animated.Value(1)).current;
 
-  const handleMicPressIn = () => {
+  const handleMicPressIn = async () => {
     Vibration.vibrate(50); // micro haptic vibration
     Animated.spring(micScale, {
-      toValue: 1.2,
+      toValue: 1.5,
       useNativeDriver: true,
     }).start();
+
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status === 'granted') {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+
+        const { recording } = await Audio.Recording.createAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        );
+        setRecording(recording);
+        setIsRecordingDictation(true);
+      } else {
+        Alert.alert('Permission Denied', 'Please grant microphone access to use dictation.');
+      }
+    } catch (err) {
+      console.error('Failed to start recording', err);
+    }
   };
 
-  const handleMicPressOut = () => {
+  const handleMicPressOut = async () => {
     Animated.spring(micScale, {
       toValue: 1,
       friction: 4,
       useNativeDriver: true,
     }).start();
+
+    if (!recording) return;
+
+    try {
+      setIsRecordingDictation(false);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+
+      if (!uri) return;
+
+      // Send to backend for STT Transcription
+      setIsLoading(true);
+      const formData = new FormData();
+      formData.append('file', {
+        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+        type: 'audio/m4a',
+        name: 'dictation.m4a'
+      } as any);
+
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await axios.post(`${API_URL}/transcribe`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        },
+      });
+
+      if (response.data && response.data.text) {
+        // Append transcribed text to the input field
+        setInputText(prev => prev ? prev + ' ' + response.data.text : response.data.text);
+      }
+
+    } catch (err) {
+      console.error('Failed to stop recording or transcribe', err);
+      Alert.alert('Error', 'Failed to transcribe audio.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
+    const initPushNotifications = async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status === 'granted') {
+        await Notifications.cancelAllScheduledNotificationsAsync();
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "MindEase Connection 🌿",
+            body: "Take a deep breath. We're here if you want to chat.",
+          },
+          trigger: { seconds: 24 * 60 * 60, repeats: true } as any
+        });
+      }
+    };
+
     const loadData = async () => {
+      initPushNotifications();
+      // Get Location
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          let loc = await Location.getCurrentPositionAsync({});
+          setLocation({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude
+          });
+        }
+      } catch (e) {
+        console.log("Location error:", e);
+      }
+
       try {
         const storedName = await AsyncStorage.getItem('userName') || 'User';
         setUserName(storedName);
@@ -178,17 +294,30 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
     });
   };
 
+  const cycleLanguage = () => {
+    const langs: ('Auto-Detect' | 'English' | 'Spanish' | 'Hindi' | 'Telugu' | 'French')[] = ['Auto-Detect', 'English', 'Spanish', 'Hindi', 'Telugu', 'French'];
+    const currentIndex = langs.indexOf(selectedLanguage);
+    setSelectedLanguage(langs[(currentIndex + 1) % langs.length]);
+  };
+
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
     const currentInput = inputText.trim();
+    const currentReplyContext = replyingTo ? {
+      text: replyingTo.text,
+      isUser: replyingTo.sender === 'user'
+    } : undefined;
+
     const userMsg: Message = {
       id: Date.now().toString(),
       text: currentInput,
-      sender: 'user'
+      sender: 'user',
+      replyTo: currentReplyContext
     };
 
     setInputText('');
+    setReplyingTo(null);
     setIsLoading(true);
 
     setSessions(prev => prev.map(session => {
@@ -216,7 +345,10 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
         `${API_URL}/chat`, 
         {
           session_id: `mobile-${userName}-${activeSessionId}`,
-          message: userMsg.text
+          message: userMsg.text,
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          language: selectedLanguage
         },
         {
           headers: {
@@ -293,7 +425,7 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
   return (
     <>
     <LinearGradient
-        colors={[theme.backgroundStart, theme.backgroundEnd]}
+        colors={[activeTheme.backgroundStart, activeTheme.backgroundEnd]}
         style={styles.gradient}
     >
       <SafeAreaView style={styles.container}>
@@ -317,33 +449,51 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
             </TouchableOpacity>
         </View>
 
-        {/* CHAT AREA */}
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <ChatBubble 
-              text={item.text} 
-              isUser={item.sender === 'user'} 
-              isCrisis={item.isCrisis}
-              isAnxiety={item.isAnxiety}
-              hospitalData={item.hospitalData}
+          {/* KEYBOARD AVOIDING WRAPPER FOR BOTH CHAT AND INPUT */}
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
+          >
+            {/* CHAT AREA */}
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
+                <ChatBubble
+                  text={item.text} 
+                  isUser={item.sender === 'user'}
+                  isCrisis={item.isCrisis}
+                  isAnxiety={item.isAnxiety}
+                  hospitalData={item.hospitalData}
+                  onLongPress={() => setReplyingTo(item)}
+                  replyTo={item.replyTo}
+                />
+              )}
+              ListFooterComponent={isLoading ? <TypingIndicator /> : null}
+              contentContainerStyle={styles.chatList}
+              style={styles.flex}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
             />
-          )}
-          contentContainerStyle={styles.chatList}
-          style={styles.flex}
-        />
 
-        {/* INPUT AREA (Floating Glass Bar) */}
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        >
-          <View style={styles.inputContainer}>
-            <GlassContainer style={styles.inputWrapper} borderRadius={50}>
+            {/* INPUT AREA */}
+            <View style={styles.inputContainer}>
+              {replyingTo && (
+                <View style={styles.replyingToBanner}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.replyingToAuthor}>Replying to {replyingTo.sender === 'user' ? 'yourself' : 'MindEase AI'}</Text>
+                    <Text style={styles.replyingToText} numberOfLines={1}>{replyingTo.text}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setReplyingTo(null)} style={styles.cancelReplyBtn}>
+                    <X color="white" size={18} />
+                  </TouchableOpacity>
+                </View>
+              )}
+              <GlassContainer style={styles.inputWrapper} borderRadius={replyingTo ? 20 : 50}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: activeTheme.text }]}
                 placeholder="What is on your mind?"
                 placeholderTextColor="#666"
                 value={inputText}
@@ -352,12 +502,12 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
               />
               <Animated.View style={{ transform: [{ scale: micScale }] }}>
                 <TouchableOpacity 
-                  style={styles.micButton}
+                  style={[styles.micButton, isRecordingDictation && styles.micButtonRecording]}
                   onPressIn={handleMicPressIn}
                   onPressOut={handleMicPressOut}
                   activeOpacity={0.7}
                 >
-                  <Mic color="#666" size={20} />
+                  <Mic color={isRecordingDictation ? "#ef4444" : "#666"} size={20} />
                 </TouchableOpacity>
               </Animated.View>
               <TouchableOpacity 
@@ -395,6 +545,22 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
                 <X color="white" size={24} />
               </TouchableOpacity>
             </View>
+
+            {/* Language Toggle */}
+            <TouchableOpacity style={styles.languageToggleBtn} onPress={cycleLanguage}>
+              <View style={styles.languageToggleInner}>
+                 <Globe color="white" size={18} />
+                 <Text style={styles.languageToggleText}>Language: {selectedLanguage}</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Dashboard Button */}
+            <TouchableOpacity style={styles.dashboardToggleBtn} onPress={() => { setIsDashboardOpen(true); setIsSidebarOpen(false); }}>
+              <View style={styles.languageToggleInner}>
+                 <Activity color="white" size={18} />
+                 <Text style={styles.languageToggleText}>Dashboard & Settings</Text>
+              </View>
+            </TouchableOpacity>
 
             {/* New Chat Button */}
             <TouchableOpacity style={styles.newChatBtn} onPress={handleNewConversation}>
@@ -438,6 +604,13 @@ export default function ChatScreen({ navigation }: ChatScreenProps) {
         </View>
       </View>
     )}
+
+    {/* Dashboard Modal */}
+    <DashboardModal 
+       visible={isDashboardOpen} 
+       onClose={() => setIsDashboardOpen(false)} 
+       themeKey={activeThemeKey} 
+    />
     </>
   );
 }
@@ -508,7 +681,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: theme.text,
     maxHeight: 100,
     paddingVertical: 10,
   },
@@ -525,6 +697,10 @@ const styles = StyleSheet.create({
     padding: 10,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  micButtonRecording: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderRadius: 20,
   },
   
   // Sidebar Styles
@@ -579,6 +755,34 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     padding: 4,
+  },
+  dashboardToggleBtn: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    backgroundColor: '#1A1D20',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  languageToggleBtn: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    backgroundColor: '#1A1D20',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  languageToggleInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  languageToggleText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
   },
   newChatBtn: {
     flexDirection: 'row',
@@ -641,5 +845,30 @@ const styles = StyleSheet.create({
     color: 'rgba(248, 113, 113, 0.8)',
     fontSize: 15,
     fontWeight: '600',
+  },
+  replyingToBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    padding: 10,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    marginBottom: -10,
+    paddingBottom: 15,
+  },
+  replyingToAuthor: {
+    color: '#3B82F6',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  replyingToText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+  },
+  cancelReplyBtn: {
+    padding: 4,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
   }
 });
