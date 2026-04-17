@@ -441,7 +441,7 @@ export default function ChatScreen({ onBack, token, userName }: Props) {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     placeholder="Type your message..."
-                    disabled={isLoading}
+                    autoFocus
                     style={{ backgroundColor: activeTheme.glassWrapper.backgroundColor, borderColor: activeTheme.glassWrapper.borderColor, color: activeTheme.text }}
                     className="w-full border hover:border-white/20 rounded-full py-4 pl-6 pr-24 placeholder-gray-600 focus:outline-none focus:border-[#2ECC71]/30 transition-all text-sm"
                 />
