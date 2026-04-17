@@ -42,7 +42,7 @@ Notifications.setNotificationHandler({
 
 // --- CONFIG --- 
 // Using 10.0.2.2 for Android Emulator, localhost for iOS
-const API_URL = 'http://192.168.29.173:8000';
+const API_URL = 'http://100.30.177.1:8000';
 
 interface Hospital {
   name: string;

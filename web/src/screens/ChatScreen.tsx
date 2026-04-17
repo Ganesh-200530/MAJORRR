@@ -30,7 +30,7 @@ interface ChatSession {
   updatedAt: number;
 }
 
-const API_URL = 'http://localhost:8000'; // Make sure this matches your backend
+const API_URL = 'http://100.30.177.1:8000'; // Make sure this matches your backend
 
 export default function ChatScreen({ onBack, token, userName }: Props) {
   const defaultMessage: Message = {

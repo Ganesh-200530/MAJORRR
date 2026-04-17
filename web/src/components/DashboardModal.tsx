@@ -11,7 +11,7 @@ interface DashboardModalProps {
   setThemeKey: (key: keyof typeof THEMES) => void;
 }
 
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://100.30.177.1:8000';
 
 export function DashboardModal({ isOpen, onClose, token, themeKey, setThemeKey }: DashboardModalProps) {
   const [moodHistory, setMoodHistory] = useState<number[]>([]);

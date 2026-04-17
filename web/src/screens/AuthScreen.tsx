@@ -21,7 +21,7 @@ export default function AuthScreen({ onAuthSuccess }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const BASE_URL = 'http://localhost:8000'; // Make sure this matches your backend
+      const BASE_URL = 'http://100.30.177.1:8000'; // Make sure this matches your backend
       let response;
 
       if (isLogin) {

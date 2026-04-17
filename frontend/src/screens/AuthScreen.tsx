@@ -32,7 +32,7 @@ interface Props {
 }
 
 // UPDATE THIS TO YOUR LOCAL IP ADDRESS
-const API_URL = 'http://192.168.29.173:8000'; 
+const API_URL = 'http://100.30.177.1:8000'; 
 
 export default function AuthScreen({ navigation }: Props) {
   const [isLogin, setIsLogin] = useState(true);
